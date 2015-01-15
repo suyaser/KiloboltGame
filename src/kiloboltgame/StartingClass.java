@@ -2,11 +2,15 @@ package kiloboltgame;
 
 import java.applet.Applet;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -14,7 +18,7 @@ import kiloboltgame.framework.animation;
 
 public class StartingClass extends Applet implements Runnable, KeyListener {
 
-	private Robot Qbot;
+	private static Robot Qbot;
 	private Image image, currentSprite, character, character2, character3,
 			characterDown, characterJumped, background, heliboy, heliboy2,
 			heliboy3, heliboy4, heliboy5;
@@ -22,7 +26,23 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 	private Graphics second;
 	private URL base;
 	private static Background bg1, bg2;
-	private Heliboy hb1, hb2;
+	public static Image tileOcean;
+	public static Image tileDirt;
+	private static Heliboy hb1;
+	private static Heliboy hb2;
+	private ArrayList<tile> tiles = new ArrayList<tile>();
+	public static Image tilegrassbot;
+	public static Image tilegrasstop;
+	public static Image tilegrassleft;
+	public static Image tilegrassright;
+	public static int score;
+	private Font font = new Font(null, Font.BOLD, 30);
+
+	enum GameState {
+		Alive, Dead
+	}
+
+	GameState state = GameState.Alive;
 
 	@Override
 	public void init() {
@@ -51,6 +71,12 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 		heliboy5 = getImage(base, "raw/heliboy5.png");
 
 		background = getImage(base, "raw/background.png");
+
+		tileDirt = getImage(base, "raw/tiledirt.png");
+		tilegrassbot = getImage(base, "raw/tilegrassbot.png");
+		tilegrasstop = getImage(base, "raw/tilegrasstop.png");
+		tilegrassright = getImage(base, "raw/tilegrassright.png");
+		tilegrassleft = getImage(base, "raw/tilegrassleft.png");
 
 		anim = new animation();
 		anim.addFrame(character, 1250);
@@ -91,11 +117,48 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 	public void start() {
 		bg1 = new Background(0, 0);
 		bg2 = new Background(2160, 0);
+		Qbot = new Robot();
+		try {
+			loadTiles("raw/map1.txt");
+		} catch (IOException e) {
+
+		}
 		hb1 = new Heliboy(340, 360);
 		hb2 = new Heliboy(700, 360);
-		Qbot = new Robot();
 		Thread thread = new Thread(this);
 		thread.start();
+	}
+
+	private void loadTiles(String string) throws IOException {
+		int width = 0;
+		ArrayList<String> lines = new ArrayList<String>();
+		BufferedReader reader = new BufferedReader(new FileReader(string));
+		while (true) {
+			String line = reader.readLine();
+			if (line == null) {
+				reader.close();
+				break;
+			}
+
+			if (!line.startsWith("!")) {
+				lines.add(line);
+				width = Math.max(line.length(), width);
+			}
+		}
+		for (int j = 0; j < 12; j++) {
+			String line = lines.get(j);
+			{
+				for (int i = 0; i < width; i++) {
+					if (i < line.length()) {
+						char ch = line.charAt(i);
+						tile tile = new tile(i, j,
+								Character.getNumericValue(ch));
+						tiles.add(tile);
+					}
+				}
+			}
+		}
+
 	}
 
 	@Override
@@ -112,39 +175,43 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 
 	@Override
 	public void run() {
-		while (true) {
-			bg1.update();
-			bg2.update();
-			hb1.update();
-			hb2.update();
-			Qbot.update();
-			if (Qbot.isJumped()) {
-				currentSprite = characterJumped;
-			} else if (!Qbot.isJumped() && !Qbot.isDucked()) {
-				currentSprite = anim.getImage();
-			}
-			ArrayList<Projectile> projectiles = Qbot.getProjectiles();
-			for (int i = projectiles.size() - 1; i >= 0; i--) {
-				Projectile p = (Projectile) projectiles.get(i);
-				if (p.isVisible() == true) {
-					p.update();
-				} else {
-					projectiles.remove(i);
+		if (state == GameState.Alive) {
+			while (true) {
+				bg1.update();
+				bg2.update();
+				hb1.update();
+				hb2.update();
+				Qbot.update();
+				if (Qbot.isJumped()) {
+					currentSprite = characterJumped;
+				} else if (!Qbot.isJumped() && !Qbot.isDucked()) {
+					currentSprite = anim.getImage();
+				}
+				ArrayList<Projectile> projectiles = Qbot.getProjectiles();
+				for (int i = projectiles.size() - 1; i >= 0; i--) {
+					Projectile p = (Projectile) projectiles.get(i);
+					if (p.isVisible() == true) {
+						p.update();
+					} else {
+						projectiles.remove(i);
+					}
+				}
+				for (tile a : tiles) {
+					a.update();
+				}
+				anim.update(10);
+				hanim.update(50);
+				repaint();
+				try {
+					Thread.sleep(17);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				if (Qbot.getCenterY() > 500) {
+					state = GameState.Dead;
 				}
 			}
-			animate();
-			repaint();
-			try {
-				Thread.sleep(17);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
 		}
-	}
-
-	private void animate() {
-		   anim.update(10);
-		   hanim.update(50);
 	}
 
 	@Override
@@ -162,18 +229,58 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 
 	@Override
 	public void paint(Graphics g) {
+		if (state == GameState.Alive) {
 		g.drawImage(background, bg1.getBgX(), bg1.getBgY(), this);
 		g.drawImage(background, bg2.getBgX(), bg2.getBgY(), this);
+		for (tile a : tiles) {
+			g.drawImage(a.getImage(), a.getX(), a.getY(), this);
+		}
 		ArrayList<Projectile> projectiles = Qbot.getProjectiles();
 		for (int i = projectiles.size() - 1; i >= 0; i--) {
 			Projectile p = (Projectile) projectiles.get(i);
 			g.setColor(Color.YELLOW);
 			g.fillRect(p.getX(), p.getY(), 10, 5);
 		}
-		g.drawImage(hanim.getImage(), hb1.getCenterX() - 48, hb1.getCenterY() - 48, this);
-		g.drawImage(hanim.getImage(), hb2.getCenterX() - 48, hb2.getCenterY() - 48, this);
+		if(hb1.health>0)
+		g.drawImage(hanim.getImage(), hb1.getCenterX() - 48,
+				hb1.getCenterY() - 48, this);
+		if(hb2.health>0)
+		g.drawImage(hanim.getImage(), hb2.getCenterX() - 48,
+				hb2.getCenterY() - 48, this);
 		g.drawImage(currentSprite, Qbot.getCenterX() - 61,
 				Qbot.getCenterY() - 63, this);
+		// g.drawRect((int) Robot.rectU.getX(), (int) Robot.rectU.getY(),
+		// (int) Robot.rectU.getWidth(), (int) Robot.rectU.getHeight());
+		// g.drawRect((int) Robot.rectD.getX(), (int) Robot.rectD.getY(),
+		// (int) Robot.rectD.getWidth(), (int) Robot.rectD.getHeight());
+		// g.drawRect((int)Robot.rectU.getX() - 26, (int)Robot.rectU.getY()+32,
+		// 26, 20);
+		// g.drawRect((int)Robot.rectU.getX() + 68, (int)Robot.rectU.getY()+32,
+		// 26, 20);
+		// g.drawRect(Qbot.getCenterX() - 110, Qbot.getCenterY() - 110, 180,
+		// 180);
+		// g.setColor(Color.blue);
+		// g.drawRect(Qbot.getCenterX() - 50, Qbot.getCenterY() + 20, 50, 15);
+		// g.drawRect(Qbot.getCenterX(), Qbot.getCenterY() + 20, 50, 15);
+		g.setFont(font);
+		g.setColor(Color.WHITE);
+		g.drawString(Integer.toString(score), 740, 30);
+		} else if (state == GameState.Dead) {
+			g.setColor(Color.BLACK);
+			g.fillRect(0, 0, 800, 480);
+			g.setColor(Color.WHITE);
+			g.drawString("Dead", 360, 240);
+
+
+		}
+	}
+
+	public static Heliboy getHb1() {
+		return hb1;
+	}
+
+	public static Heliboy getHb2() {
+		return hb2;
 	}
 
 	@Override
@@ -205,6 +312,7 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 			System.out.println("Jump");
 			if (!Qbot.isDucked() && !Qbot.isJumped()) {
 				Qbot.shoot();
+				Qbot.setReadyToFire(false);
 			}
 			break;
 		}
@@ -231,6 +339,7 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 			break;
 		case KeyEvent.VK_SPACE:
 			System.out.println("stop Jump");
+			Qbot.setReadyToFire(true);
 			break;
 		}
 	}
@@ -239,6 +348,10 @@ public class StartingClass extends Applet implements Runnable, KeyListener {
 	public void keyTyped(KeyEvent arg0) {
 		// TODO Auto-generated method stub
 
+	}
+
+	public static Robot getQbot() {
+		return Qbot;
 	}
 
 }

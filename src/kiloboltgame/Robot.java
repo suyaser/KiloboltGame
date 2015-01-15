@@ -1,5 +1,6 @@
 package kiloboltgame;
 
+import java.awt.Rectangle;
 import java.util.ArrayList;
 
 public class Robot {
@@ -7,18 +8,25 @@ public class Robot {
 	// Constants are Here
 	final int JUMPSPEED = -15;
 	final int MOVESPEED = 5;
-	final int GROUND = 382;
 
 	private int centerX = 100;
-	private int centerY = GROUND;
+	private int centerY = 382;
 	private boolean jumped = false;
 	private boolean movingLeft = false;
 	private boolean movingRight = false;
 	private boolean ducked = false;
+	private boolean isReadyToFire = true;
 	private static Background bg1 = StartingClass.getBg1();
 	private static Background bg2 = StartingClass.getBg2();
 	private int speedX = 0;
-	private int speedY = 1;
+	private int speedY = 0;
+	public static Rectangle rectD = new Rectangle(0, 0, 0, 0);
+	public static Rectangle rectU = new Rectangle(0, 0, 0, 0);
+	public static Rectangle rect3 = new Rectangle(0, 0, 0, 0);
+	public static Rectangle rect4 = new Rectangle(0, 0, 0, 0);
+	public static Rectangle yellowRed = new Rectangle(0, 0, 0, 0);
+	public static Rectangle footleft = new Rectangle(0,0,0,0);
+	public static Rectangle footright = new Rectangle(0,0,0,0);
 	private ArrayList<Projectile> projectiles = new ArrayList<Projectile>();
 
 	public void update() {
@@ -36,32 +44,31 @@ public class Robot {
 			centerX += speedX;
 		}
 		if (speedX > 0 && centerX > 200) {
-			bg1.setSpeedX(-MOVESPEED);
-			bg2.setSpeedX(-MOVESPEED);
+			bg1.setSpeedX(-MOVESPEED / 5);
+			bg2.setSpeedX(-MOVESPEED / 5);
 		}
 
 		// Updates Y Position
 		centerY += speedY;
-		if (centerY + speedY >= GROUND) {
-			centerY = GROUND;
-		}
 
 		// Handles Jumping
-		if (jumped == true) {
-			speedY += 1;
-
-			if (centerY + speedY >= GROUND) {
-				centerY = GROUND;
-				speedY = 0;
-				jumped = false;
-			}
-
+		speedY += 1;
+		if (speedY > 3){
+			jumped = true;
 		}
 
 		// Prevents going beyond X coordinate of 0
 		if (centerX + speedX <= 60) {
 			centerX = 61;
 		}
+
+		rectU.setRect(centerX - 34, centerY - 63, 68, 63);
+		rectD.setRect(rectU.getX(), rectU.getY() + 63, 68, 64);
+        rect3.setRect(rectU.getX() - 26, rectU.getY()+32, 26, 20);
+        rect4.setRect(rectU.getX() + 68, rectU.getY()+32, 26, 20);
+        yellowRed.setRect(centerX - 110, centerY - 110, 180, 180);
+        footleft.setRect(centerX - 50, centerY + 20, 50, 15);
+        footright.setRect(centerX, centerY + 20, 50, 15);
 	}
 
 	public void moveRight() {
@@ -110,8 +117,10 @@ public class Robot {
 	}
 
 	public void shoot() {
-		Projectile p = new Projectile(centerX + 50, centerY - 25);
-		projectiles.add(p);
+		if (isReadyToFire) {
+			Projectile p = new Projectile(centerX + 50, centerY - 25);
+			projectiles.add(p);
+		}
 	}
 
 	public ArrayList<Projectile> getProjectiles() {
@@ -186,4 +195,12 @@ public class Robot {
 		this.movingLeft = movingLeft;
 	}
 
+	public boolean isReadyToFire() {
+		return isReadyToFire;
+	}
+
+	public void setReadyToFire(boolean isReadyToFire) {
+		this.isReadyToFire = isReadyToFire;
+	}
+	
 }
